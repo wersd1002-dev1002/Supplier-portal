@@ -121,7 +121,7 @@ const [statusFilter, setStatusFilter] = useState('ALL');
 // Auto-generate Basic Info format
 const primaryPo = items[0]?.poNo || 'PO_NO';
 const primaryItem = items[0]?.itemNo || '00010';
-const generatedSubject = [Inspection Request] ${primaryPo}-${primaryItem}_${companyName || 'COMPANY'}_${requestDate || 'YYYY-MM-DD'};
+const generatedSubject = `[Inspection Request] ${primaryPo}-${primaryItem}_${companyName || 'COMPANY'}_${requestDate || 'YYYY-MM-DD'}`;
 
 // Check 7-day rule on date change
 useEffect(() => {
