@@ -111,7 +111,7 @@ export default function App() {
   // Auto-generated Subject (No. 1) - 백틱(``) 적용 완료
   const primaryPo = items[0]?.poNo || 'PO_NO';
   const primaryItem = items[0]?.itemNo || '00010';
-  const generatedSubject = [Inspection Request] ${primaryPo}-${primaryItem}_${companyName || 'COMPANY'}_${requestDate || 'YYYY-MM-DD'};
+ const generatedSubject = '[Inspection Request] ' + primaryPo + '-' + primaryItem + '_' + (companyName || 'COMPANY') + '_' + (requestDate || 'YYYY-MM-DD');
 
   // Submit Handler
   const handleSubmit = (e) => {
