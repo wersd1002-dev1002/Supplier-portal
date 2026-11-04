@@ -912,7 +912,7 @@ export default function App() {
                 <input 
                   type="password"
                   required
-                  placeholder="비밀번호 입력 (기본: 1002)"
+                  placeholder="password"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   className="w-full border border-slate-300 rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
