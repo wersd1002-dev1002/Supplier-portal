@@ -30,11 +30,11 @@ import {
 const INITIAL_REQUESTS = [
   {
     id: "REQ-20261103-01",
-    basicInfo: "[Inspection Request] 4500012322-10_ILSUNG MEASUREMENT CO., LTD._2026-11-10",
-    companyName: "ILSUNG MEASUREMENT CO., LTD.",
-    location: "65-1, Jwadong-ro, Haeundae-gu, Busan, Korea",
-    contactPerson: "Han, Seung Jun",
-    phoneEmail: "+82 10 2624 7623 / contact@ismm.co.kr",
+    basicInfo: "[Inspection Request] 4500012322-10_WINGD CO., LTD._2026-11-10",
+    companyName: "WINGD CO., LTD.",
+    location: "8, Park Young-jun-gil, Busan, Korea",
+    contactPerson: "Hong, Gil Dong",
+    phoneEmail: "+82 10 1234 5678 / wingd@wingd.co.kr",
     requestDate: "2026-11-10",
     requestTime: "10:00",
     status: "Approved", 
@@ -46,7 +46,7 @@ const INITIAL_REQUESTS = [
         itemNo: "00010",
         qty: "25 pcs",
         drawingRev: "PTAA015861 (Rev.0)",
-        reportNo: "IS261103-01",
+        reportNo: "win261103-01",
         rae: "-",
         ncr: "-"
       }
