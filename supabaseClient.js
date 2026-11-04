@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://dcpomddzvjmwvnovxvhb.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjcG9tZGR6dmptd3Zub3Z4dmhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAzODU0NDMsImV4cCI6MjA1NTk2MTQ0M30.실제당신의키';
+// .trim()을 추가하여 복사 과정에서 들어간 보이지 않는 줄바꿈이나 공백을 원천 차단합니다.
+const SUPABASE_URL = 'https://dcpomddzvjmwvnovxvhb.supabase.co'.trim();
+const SUPABASE_ANON_KEY = '본인의_SUPABASE_ANON_KEY를_여기에_붙여넣으세요'.trim();
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
