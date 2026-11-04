@@ -632,5 +632,13 @@ export default function App() {
 
       </main>
     </div>
+    // 파일 가장 맨 아래에 이 코드가 반드시 있어야 화면에 나타납니다!
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  ReactDOM.createRoot(rootElement).render(<App />);
+}
   );
 }
