@@ -518,7 +518,7 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: +82 10 2624 7623 / weingd@wingd.co.kr"
+                      placeholder="예: +82 10 1234 5678 / weingd@wingd.co.kr"
                       value={phoneEmail}
                       onChange={(e) => setPhoneEmail(e.target.value)}
                       className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
