@@ -1,13 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardList, History, Plus, Trash2, Building2, Check, X, Lock, Unlock } from 'lucide-react';
+import { 
+  ClipboardList, 
+  Calendar as CalendarIcon, 
+  History, 
+  Plus, 
+  Trash2, 
+  CheckCircle2, 
+  AlertTriangle, 
+  Search, 
+  Download, 
+  Building2, 
+  User, 
+  PhoneCall, 
+  Clock, 
+  FileText, 
+  Check,
+  X,
+  Filter,
+  Lock,
+  Unlock,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('new');
   const [requests, setRequests] = useState([]);
+  
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
+
+  const [currentYear, setCurrentYear] = useState(2026);
+  const [currentMonth, setCurrentMonth] = useState(11);
 
   const [companyName, setCompanyName] = useState('');
   const [location, setLocation] = useState('');
@@ -21,7 +47,12 @@ export default function App() {
     { poNo: '', itemNo: '', qty: '', drawingRev: '', reportNo: '', rae: '', ncr: '' }
   ]);
 
+  const [isNoticeWarning, setIsNoticeWarning] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [selectedDetailRequest, setSelectedDetailRequest] = useState(null);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
   const primaryPo = items[0]?.poNo || 'PO_NO';
   const primaryItem = items[0]?.itemNo || '00010';
@@ -33,9 +64,15 @@ export default function App() {
 
   const fetchRequests = async () => {
     try {
-      const { data, error } = await supabase.from('inspection_requests').select('*').order('created_date', { ascending: false });
-      if (!error && data) {
-        setRequests(data.map(row => ({
+      const { data, error } = await supabase
+        .from('inspection_requests')
+        .select('*')
+        .order('created_date', { ascending: false });
+      
+      if (error) {
+        console.error('데이터 조회 오류:', error.message);
+      } else if (data && data.length > 0) {
+        const formattedData = data.map(row => ({
           id: row.id,
           basicInfo: row.basic_info,
           companyName: row.company_name,
@@ -48,14 +85,49 @@ export default function App() {
           createdDate: row.created_date,
           note: row.note,
           items: row.items || []
-        })));
+        }));
+        setRequests(formattedData);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error('서버 통신 실패:', err);
+    }
   };
+
+  useEffect(() => {
+    if (requestDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const targetDate = new Date(requestDate);
+      const diffTime = targetDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      setIsNoticeWarning(diffDays < 7);
+    }
+  }, [requestDate]);
 
   const showToast = (msg, type = 'success') => {
     setToastMessage({ msg, type });
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleAddItem = () => {
+    setItems([
+      ...items,
+      { poNo: items[items.length - 1]?.poNo || '', itemNo: '', qty: '', drawingRev: '', reportNo: '', rae: '', ncr: '' }
+    ]);
+  };
+
+  const handleRemoveItem = (index) => {
+    if (items.length === 1) {
+      showToast('최소 1개 이상의 항목이 필요합니다.', 'error');
+      return;
+    }
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const updated = [...items];
+    updated[index][field] = value;
+    setItems(updated);
   };
 
   const handleSubmit = async (e) => {
@@ -67,71 +139,176 @@ export default function App() {
       id: newReqId,
       basic_info: generatedSubject,
       company_name: companyName,
-      location,
+      location: location,
       contact_person: contactPerson,
       phone_email: phoneEmail,
       request_date: requestDate,
       request_time: requestTime,
       status: 'Pending Review',
       created_date: todayStr,
-      note,
-      items
+      note: note,
+      items: items
     };
 
     try {
       const { error } = await supabase.from('inspection_requests').insert([dbPayload]);
       if (error) throw error;
+
       showToast('검사 신청이 성공적으로 접수되었습니다!');
-      setCompanyName(''); setLocation(''); setContactPerson(''); setPhoneEmail(''); setRequestDate(''); setNote('');
+      setCompanyName('');
+      setLocation('');
+      setContactPerson('');
+      setPhoneEmail('');
+      setRequestDate('');
+      setNote('');
       setItems([{ poNo: '', itemNo: '', qty: '', drawingRev: '', reportNo: '', rae: '', ncr: '' }]);
       fetchRequests();
     } catch (err) {
-      showToast('저장 실패: ' + err.message, 'error');
+      console.error('저장 실패:', err.message);
+      showToast('데이터 저장 중 오류가 발생했습니다: ' + err.message, 'error');
     }
   };
+
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    if (adminPassword === '1002') {
+      setIsAdmin(true);
+      setShowAdminLoginModal(false);
+      setAdminPassword('');
+      setActiveTab('history');
+      showToast('관리자 모드로 전환되었습니다.');
+    } else {
+      showToast('관리자 비밀번호가 틀렸습니다.', 'error');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdmin(false);
+    setActiveTab('new');
+    showToast('일반 공급사 모드로 전환되었습니다.');
+  };
+
+  const handleStatusChange = async (reqId, newStatus) => {
+    const { error } = await supabase.from('inspection_requests').update({ status: newStatus }).eq('id', reqId);
+    if (error) {
+      showToast('상태 변경 중 오류가 발생했습니다.', 'error');
+      return;
+    }
+    setRequests(requests.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
+    if (selectedDetailRequest && selectedDetailRequest.id === reqId) {
+      setSelectedDetailRequest({ ...selectedDetailRequest, status: newStatus });
+    }
+    showToast(`신청 상태가 [${newStatus}] (으)로 변경되었습니다.`);
+  };
+
+  const filteredRequests = requests.filter(req => {
+    const matchesSearch = 
+      req.basicInfo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      req.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      req.items.some(i => i.poNo.includes(searchTerm) || i.itemNo.includes(searchTerm));
+    const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // 캘린더 생성 로직
+  const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => new Date(year, month - 1, 1).getDay();
+
+  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+  const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
+
+  const calendarDays = [];
+  for (let i = 0; i < firstDay; i++) {
+    calendarDays.push(null);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    calendarDays.push(new Date(currentYear, currentMonth - 1, d));
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
       {toastMessage && (
-        <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-5 py-3 rounded-lg shadow-xl text-white font-medium ${toastMessage.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`}>
+        <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-5 py-3 rounded-lg shadow-xl text-white font-medium ${
+          toastMessage.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'
+        }`}>
+          {toastMessage.type === 'error' ? <AlertTriangle className="w-5 h-5"/> : <CheckCircle2 className="w-5 h-5"/>}
           <span>{toastMessage.msg}</span>
         </div>
       )}
 
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600 rounded-lg text-white font-bold text-xl"><ClipboardList className="w-6 h-6" /></div>
-            <div>
-              <h1 className="text-lg font-bold">Supplier Inspection Request Portal</h1>
-              <p className="text-xs text-slate-400">품질검사 일정 관리 및 검사 신청 자동화 플랫폼</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-600 rounded-lg text-white font-bold text-xl flex items-center justify-center">
+                <ClipboardList className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                  Supplier Inspection Request Portal
+                  <span className="text-xs bg-blue-500/20 text-blue-300 font-medium px-2 py-0.5 rounded border border-blue-500/30">
+                    공급사 검사 신청 시스템
+                  </span>
+                </h1>
+                <p className="text-xs text-slate-400">품질검사 일정 관리 및 검사 신청 자동화 플랫폼</p>
+              </div>
             </div>
-          </div>
-          <div>
-            {isAdmin ? (
-              <button onClick={() => { setIsAdmin(false); setActiveTab('new'); }} className="flex items-center gap-1.5 text-xs bg-amber-600 px-3 py-2 rounded-md font-medium text-white">
-                <Unlock className="w-4 h-4" /> 관리자 모드 종료
+
+            <div className="flex items-center gap-2">
+              <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-md border border-slate-700 transition">
+                인쇄
               </button>
-            ) : (
-              <button onClick={() => setShowAdminLoginModal(true)} className="flex items-center gap-1.5 text-xs bg-slate-800 px-3 py-2 rounded-md border border-slate-700 text-slate-200">
-                <Lock className="w-4 h-4" /> 관리자 로그인
-              </button>
-            )}
+              {isAdmin ? (
+                <button onClick={handleAdminLogout} className="flex items-center gap-1.5 text-xs bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-md font-medium transition shadow">
+                  <Unlock className="w-4 h-4" /> 관리자 모드 종료
+                </button>
+              ) : (
+                <button onClick={() => setShowAdminLoginModal(true)} className="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-md border border-slate-700 transition">
+                  <Lock className="w-4 h-4" /> 관리자 로그인
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="bg-slate-800/80 border-t border-slate-700/60 px-4 sm:px-6 lg:px-8 flex space-x-1">
-          <button onClick={() => setActiveTab('new')} className={`px-4 py-3 text-sm font-medium border-b-2 ${activeTab === 'new' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400'}`}>검사 신청 작성</button>
-          <button onClick={() => { if (!isAdmin) setShowAdminLoginModal(true); else setActiveTab('history'); }} className={`px-4 py-3 text-sm font-medium border-b-2 ${activeTab === 'history' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400'}`}>
-            신청 내역 및 관리 {!isAdmin && <Lock className="w-3 h-3 inline ml-1 text-amber-400" />}
-          </button>
+        <div className="bg-slate-800/80 border-t border-slate-700/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1">
+            <button
+              onClick={() => setActiveTab('new')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
+                activeTab === 'new' ? 'border-blue-500 text-blue-400 bg-slate-800' : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Plus className="w-4 h-4" /> 검사 신청 작성 (New Request)
+            </button>
+            <button
+              onClick={() => { if (!isAdmin) setShowAdminLoginModal(true); else setActiveTab('history'); }}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
+                activeTab === 'history' ? 'border-blue-500 text-blue-400 bg-slate-800' : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <History className="w-4 h-4" /> 신청 내역 및 관리 {isAdmin && `(${requests.length})`}
+              {!isAdmin && <Lock className="w-3 h-3 text-amber-400 ml-0.5" />}
+            </button>
+            <button
+              onClick={() => { if (!isAdmin) setShowAdminLoginModal(true); else setActiveTab('calendar'); }}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
+                activeTab === 'calendar' ? 'border-blue-500 text-blue-400 bg-slate-800' : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <CalendarIcon className="w-4 h-4" /> 검사 일정 현황 (Calendar View)
+              {!isAdmin && <Lock className="w-3 h-3 text-amber-400 ml-0.5" />}
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {activeTab === 'new' && (
-          <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-6">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><ClipboardList className="w-5 h-5 text-blue-600" /> 검사 신청서 작성</h2>
+          <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden p-6 space-y-6">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-blue-600" /> 검사 신청서 작성 (Inspection Request Form)
+            </h2>
 
             <div className="bg-blue-50/60 border border-blue-200 rounded-lg p-4">
               <label className="block text-xs font-semibold text-blue-900 mb-1">No. 1 기본 정보 (자동 생성 메일 제목)</label>
@@ -140,7 +317,7 @@ export default function App() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">공급사 업체명 *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1"><Building2 className="w-3.5 h-3.5 inline mr-1 text-slate-400" />공급사 업체명 *</label>
                 <input type="text" required placeholder="예: WINGD CO., LTD." value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm" />
               </div>
               <div>
@@ -157,10 +334,47 @@ export default function App() {
               </div>
             </div>
 
+            {/* 품목 상세 테이블 추가 */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <label className="block text-xs font-semibold text-slate-700">품목 상세 내용</label>
+                <button type="button" onClick={handleAddItem} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-medium border border-slate-300 flex items-center gap-1">
+                  <Plus className="w-3.5 h-3.5" /> 품목 추가
+                </button>
+              </div>
+              <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 border-b text-slate-700 uppercase font-semibold">
+                    <tr>
+                      <th className="p-3">발주번호 (PO NO.)</th>
+                      <th className="p-3">Item No.</th>
+                      <th className="p-3">수량</th>
+                      <th className="p-3">도면번호</th>
+                      <th className="p-3">리포트 번호</th>
+                      <th className="p-3 text-center">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y bg-white">
+                    {items.map((item, index) => (
+                      <tr key={index}>
+                        <td className="p-2"><input type="text" required placeholder="4500012322" value={item.poNo} onChange={(e) => handleItemChange(index, 'poNo', e.target.value)} className="w-full border rounded px-2 py-1 text-xs" /></td>
+                        <td className="p-2"><input type="text" required placeholder="00010" value={item.itemNo} onChange={(e) => handleItemChange(index, 'itemNo', e.target.value)} className="w-full border rounded px-2 py-1 text-xs" /></td>
+                        <td className="p-2"><input type="text" required placeholder="25 pcs" value={item.qty} onChange={(e) => handleItemChange(index, 'qty', e.target.value)} className="w-full border rounded px-2 py-1 text-xs" /></td>
+                        <td className="p-2"><input type="text" placeholder="PTAA015861" value={item.drawingRev} onChange={(e) => handleItemChange(index, 'drawingRev', e.target.value)} className="w-full border rounded px-2 py-1 text-xs" /></td>
+                        <td className="p-2"><input type="text" placeholder="IS261103-01" value={item.reportNo} onChange={(e) => handleItemChange(index, 'reportNo', e.target.value)} className="w-full border rounded px-2 py-1 text-xs" /></td>
+                        <td className="p-2 text-center"><button type="button" onClick={() => handleRemoveItem(index)} className="text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">희망 검사 신청일 *</label>
                 <input type="date" required value={requestDate} onChange={(e) => setRequestDate(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm" />
+                {isNoticeWarning && <p className="text-xs text-amber-700 mt-1">⚠️ 7일 미만 긴급 신청입니다.</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">희망 검사 시간 *</label>
@@ -168,6 +382,8 @@ export default function App() {
                   <option value="09:00">09:00 AM</option>
                   <option value="10:00">10:00 AM</option>
                   <option value="11:00">11:00 AM</option>
+                  <option value="13:30">01:30 PM</option>
+                  <option value="14:00">02:00 PM</option>
                 </select>
               </div>
             </div>
@@ -206,7 +422,14 @@ export default function App() {
                       <td className="p-3 font-medium">{req.companyName}</td>
                       <td className="p-3">{req.contactPerson}</td>
                       <td className="p-3">{req.requestDate} {req.requestTime}</td>
-                      <td className="p-3"><span className="px-2 py-1 rounded bg-blue-50 text-blue-700 font-semibold">{req.status}</span></td>
+                      <td className="p-3">
+                        <select value={req.status} onChange={(e) => handleStatusChange(req.id, e.target.value)} className="border rounded px-2 py-1 text-xs">
+                          <option value="Pending Review">검토중 (Pending)</option>
+                          <option value="Approved">승인 완료 (Approved)</option>
+                          <option value="Schedule Confirmed">일정 확정 (Confirmed)</option>
+                          <option value="Rejected">반려 (Rejected)</option>
+                        </select>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -214,29 +437,5 @@ export default function App() {
             </div>
           </div>
         )}
-      </main>
 
-      {showAdminLoginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-base font-bold text-slate-900">관리자 인증</h3>
-              <button onClick={() => setShowAdminLoginModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-            </div>
-            
-            <form onSubmit={(e) => { e.preventDefault(); if (adminPassword === '1002') { setIsAdmin(true); setShowAdminLoginModal(false); setAdminPassword(''); setActiveTab('history'); showToast('관리자 모드로 전환되었습니다.'); } else { showToast('비밀번호가 틀렸습니다.', 'error'); } }} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">관리자 비밀번호</label>
-                <input type="password" placeholder="비밀번호 입력 (1002)" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm" autoFocus />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowAdminLoginModal(false)} className="px-4 py-2 text-xs bg-slate-100 rounded-md">취소</button>
-                <button type="submit" className="px-4 py-2 text-xs text-white bg-blue-600 rounded-md">로그인</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        {activeTab === 'calendar' &&
