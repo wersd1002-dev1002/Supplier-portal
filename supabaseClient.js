@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// URL과 Key에 공백이나 한글 주석이 섞이지 않도록 주의하세요.
 const SUPABASE_URL = 'https://dcpomddzvjmwvnovxvhb.supabase.co';
-const SUPABASE_ANON_KEY = '여기에_복사한_anon_public_키만_정확히_붙여넣기';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjcG9tZGR6dmptd3Zub3Z4dmhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAzODU0NDMsImV4cCI6MjA1NTk2MTQ0M30.실제당신의키';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
