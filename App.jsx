@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import {
+import { 
   ClipboardList, 
   Calendar as CalendarIcon, 
   History, 
@@ -211,17 +211,17 @@ export default function App() {
     setItems([{ poNo: '', itemNo: '', qty: '', drawingRev: '', reportNo: '', rae: '', ncr: '' }]);
   };
 
-  // 관리자 로그인 처리 (예시 비밀번호: 1002)
+  // 관리자 로그인 처리 (비밀번호: 1002)
   const handleAdminLogin = (e) => {
     e.preventDefault();
-    if (adminPassword === '1234') {
+    if (adminPassword === '1002') {
       setIsAdmin(true);
       setShowAdminLoginModal(false);
       setAdminPassword('');
       setActiveTab('history');
       showToast('관리자 모드로 전환되었습니다.');
     } else {
-      showToast('관리자 비밀번호가 틀렸습니다. (기본: 1002)', 'error');
+      showToast('관리자 비밀번호가 틀렸습니다. (비밀번호: 1002)', 'error');
     }
   };
 
@@ -337,7 +337,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* 탭 네비게이션 (관리자만 내역/캘린더 접근 가능하도록 제어 가능) */}
+        {/* 탭 네비게이션 */}
         <div className="bg-slate-800/80 border-t border-slate-700/60">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1">
             <button
@@ -442,7 +442,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 회사명 추가 입력 */}
+                {/* 회사명 및 정보 입력 */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
@@ -797,107 +797,100 @@ export default function App() {
           </div>
         )}
 
-{/* 탭 3: 달력 뷰 (관리자 전용 - 가독성 강화 버전) */}
-{activeTab === 'calendar' && isAdmin && (
-  <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-5">
-    {/* 헤더 & 범례 */}
-    <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
-      <div>
-        <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5 text-blue-600" />
-          2026년 11월 검사 일정 현황 (Calendar View)
-        </h2>
-        <p className="text-xs text-slate-500 mt-0.5">일자별 검사 신청 건수를 한눈에 확인하고 클릭하여 상세 정보를 조회하세요.</p>
-      </div>
-
-      {/* 상태별 범례 */}
-      <div className="flex flex-wrap items-center gap-3 text-xs font-medium bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> 검토중
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> 승인완료
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> 일정확정
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> 반려
-        </span>
-      </div>
-    </div>
-
-    {/* 그리드 달력 */}
-    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-      {/* 요일 헤더 */}
-      <div className="grid grid-cols-7 bg-slate-100 border-b border-slate-200 text-center font-bold text-xs text-slate-600 py-3">
-        <div className="text-red-500">일 (Sun)</div>
-        <div>월 (Mon)</div>
-        <div>화 (Tue)</div>
-        <div>수 (Wed)</div>
-        <div>목 (Thu)</div>
-        <div>금 (Fri)</div>
-        <div className="text-blue-500">토 (Sat)</div>
-      </div>
-
-      {/* 날짜 셀 (30일 기준) */}
-      <div className="grid grid-cols-7 divide-x divide-y divide-slate-200 bg-white">
-        {[...Array(30)].map((_, dayIdx) => {
-          const dayNum = dayIdx + 1;
-          const dateStr = `2026-11-${dayNum < 10 ? '0' + dayNum : dayNum}`;
-          const dayReqs = requests.filter(r => r.requestDate === dateStr);
-
-          return (
-            <div 
-              key={dayNum} 
-              className="min-h-[120px] p-2 hover:bg-slate-50/80 transition flex flex-col justify-between"
-            >
-              {/* 날짜 숫자와 건수 뱃지 */}
-              <div className="flex justify-between items-center mb-1.5">
-                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
-                  (dayIdx % 7 === 0) ? 'text-red-500' : (dayIdx % 7 === 6) ? 'text-blue-500' : 'text-slate-700'
-                }`}>
-                  {dayNum}
-                </span>
-                {dayReqs.length > 0 && (
-                  <span className="text-[10px] bg-blue-100 text-blue-800 font-bold rounded-full px-2 py-0.5 border border-blue-200">
-                    {dayReqs.length}건
-                  </span>
-                )}
+        {/* 탭 3: 달력 뷰 (관리자 전용 - 가독성 강화 버전) */}
+        {activeTab === 'calendar' && isAdmin && (
+          <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5 text-blue-600" />
+                  2026년 11월 검사 일정 현황 (Calendar View)
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">일자별 검사 신청 건수를 한눈에 확인하고 클릭하여 상세 정보를 조회하세요.</p>
               </div>
 
-              {/* 해당 날짜의 검사 카드 목록 */}
-              <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[90px]">
-                {dayReqs.map((req) => (
-                  <div 
-                    key={req.id}
-                    onClick={() => setSelectedDetailRequest(req)}
-                    className={`text-[11px] p-2 rounded-lg cursor-pointer border shadow-sm transition transform hover:-translate-y-0.5 ${
-                      req.status === 'Schedule Confirmed' 
-                        ? 'bg-emerald-50 text-emerald-950 border-emerald-300 hover:bg-emerald-100'
-                        : req.status === 'Approved'
-                        ? 'bg-blue-50 text-blue-950 border-blue-300 hover:bg-blue-100'
-                        : req.status === 'Rejected'
-                        ? 'bg-red-50 text-red-950 border-red-300 hover:bg-red-100'
-                        : 'bg-amber-50 text-amber-950 border-amber-300 hover:bg-amber-100'
-                    }`}
-                  >
-                    <div className="font-bold flex items-center justify-between">
-                      <span>{req.requestTime}</span>
-                      <span className="text-[9px] opacity-75 font-normal">{req.items[0]?.poNo}</span>
-                    </div>
-                    <div className="truncate font-semibold mt-0.5">{req.companyName}</div>
-                  </div>
-                ))}
+              {/* 상태별 범례 */}
+              <div className="flex flex-wrap items-center gap-3 text-xs font-medium bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> 검토중
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> 승인완료
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> 일정확정
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> 반려
+                </span>
               </div>
             </div>
-          );
-        })}
-      </div>
-    </div>
-  </div>
-)}
 
+            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="grid grid-cols-7 bg-slate-100 border-b border-slate-200 text-center font-bold text-xs text-slate-600 py-3">
+                <div className="text-red-500">일 (Sun)</div>
+                <div>월 (Mon)</div>
+                <div>화 (Tue)</div>
+                <div>수 (Wed)</div>
+                <div>목 (Thu)</div>
+                <div>금 (Fri)</div>
+                <div className="text-blue-500">토 (Sat)</div>
+              </div>
+
+              <div className="grid grid-cols-7 divide-x divide-y divide-slate-200 bg-white">
+                {[...Array(30)].map((_, dayIdx) => {
+                  const dayNum = dayIdx + 1;
+                  const dateStr = `2026-11-${dayNum < 10 ? '0' + dayNum : dayNum}`;
+                  const dayReqs = requests.filter(r => r.requestDate === dateStr);
+
+                  return (
+                    <div 
+                      key={dayNum} 
+                      className="min-h-[120px] p-2 hover:bg-slate-50/80 transition flex flex-col justify-between"
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                          (dayIdx % 7 === 0) ? 'text-red-500' : (dayIdx % 7 === 6) ? 'text-blue-500' : 'text-slate-700'
+                        }`}>
+                          {dayNum}
+                        </span>
+                        {dayReqs.length > 0 && (
+                          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold rounded-full px-2 py-0.5 border border-blue-200">
+                            {dayReqs.length}건
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[90px]">
+                        {dayReqs.map((req) => (
+                          <div 
+                            key={req.id}
+                            onClick={() => setSelectedDetailRequest(req)}
+                            className={`text-[11px] p-2 rounded-lg cursor-pointer border shadow-sm transition transform hover:-translate-y-0.5 ${
+                              req.status === 'Schedule Confirmed' 
+                                ? 'bg-emerald-50 text-emerald-950 border-emerald-300 hover:bg-emerald-100'
+                                : req.status === 'Approved'
+                                ? 'bg-blue-50 text-blue-950 border-blue-300 hover:bg-blue-100'
+                                : req.status === 'Rejected'
+                                ? 'bg-red-50 text-red-950 border-red-300 hover:bg-red-100'
+                                : 'bg-amber-50 text-amber-950 border-amber-300 hover:bg-amber-100'
+                            }`}
+                          >
+                            <div className="font-bold flex items-center justify-between">
+                              <span>{req.requestTime}</span>
+                              <span className="text-[9px] opacity-75 font-normal">{req.items[0]?.poNo}</span>
+                            </div>
+                            <div className="truncate font-semibold mt-0.5">{req.companyName}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
       </main>
 
@@ -1002,6 +995,7 @@ export default function App() {
   );
 }
 
+// 브라우저 렌더링 마운트
 const rootElement = document.getElementById('root');
 if (rootElement) {
   ReactDOM.createRoot(rootElement).render(<App />);
