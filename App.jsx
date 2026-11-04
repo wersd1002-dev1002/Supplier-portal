@@ -174,31 +174,36 @@ export default function App() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  try {
+    const { data, error } = await supabase
+      .from('inspection_requests')
+      .insert([
+        {
+          id: `REQ-${Date.now().toString().slice(-6)}`,
+          basic_info: basicInfo,
+          company_name: companyName,
+          location: location,
+          contact_person: contactPerson,
+          phone_email: phoneEmail,
+          request_date: requestDate,
+          request_time: requestTime,
+          status: '신청완료',
+          created_date: new Date().toISOString(),
+          note: note,
+          items: items
+        }
+      ]);
 
-    if (!requestDate || !companyName || !contactPerson) {
-      showToast('필수 정보를 모두 입력해 주세요.', 'error');
-      return;
-    }
-
-    const newReqId = `REQ-${Date.now().toString().slice(-6)}`;
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    const dbPayload = {
-      id: newReqId,
-      basic_info: generatedSubject,
-      company_name: companyName,
-      location: location,
-      contact_person: contactPerson,
-      phone_email: phoneEmail,
-      request_date: requestDate,
-      request_time: requestTime,
-      status: 'Pending Review',
-      created_date: todayStr,
-      note: note,
-      items: items
-    };
+    if (error) throw error;
+    alert('데이터가 성공적으로 저장되었습니다.');
+  } catch (err) {
+    console.error('저장 실패:', err.message);
+    alert('데이터 저장 중 오류가 발생했습니다: ' + err.message);
+  }
+};
 
     const { error } = await supabase.from('inspection_requests').insert([dbPayload]);
 
