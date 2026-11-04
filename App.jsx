@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardList, History, Plus, Trash2, CheckCircle2, AlertTriangle, Building2, Check, X, Lock, Unlock } from 'lucide-react';
+import { ClipboardList, History, Plus, Trash2, Building2, Check, X, Lock, Unlock } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function App() {
