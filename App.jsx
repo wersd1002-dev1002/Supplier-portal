@@ -26,66 +26,19 @@ import {
   ShieldCheck,
   MapPin
 } from 'lucide-react';
-
-const INITIAL_REQUESTS = [
-  {
-    id: "REQ-20261103-01",
-    basicInfo: "[Inspection Request] 4500012322-10_ILSUNG MEASUREMENT CO., LTD._2026-11-10",
-    companyName: "ILSUNG MEASUREMENT CO., LTD.",
-    location: "65-1, Jwadong-ro, Haeundae-gu, Busan, Korea",
-    contactPerson: "Han, Seung Jun",
-    phoneEmail: "+82 10 2624 7623 / contact@ismm.co.kr",
-    requestDate: "2026-11-10",
-    requestTime: "10:00",
-    status: "Approved", 
-    createdDate: "2026-11-03",
-    note: "Initial inspection for WinGD main engine sub-assembly parts.",
-    items: [
-      {
-        poNo: "4500012322",
-        itemNo: "00010",
-        qty: "25 pcs",
-        drawingRev: "PTAA015861 (Rev.0)",
-        reportNo: "IS261103-01",
-        rae: "-",
-        ncr: "-"
-      }
-    ]
-  },
-  {
-    id: "REQ-20261102-02",
-    basicInfo: "[Inspection Request] 4500098711-20_HYUNDAI HEAVY IND._2026-11-15",
-    companyName: "HYUNDAI HEAVY IND. (Ulsan Plant)",
-    location: "1, Myeongdeok-ro, Dong-gu, Ulsan, Korea",
-    contactPerson: "Kim, Min Soo",
-    phoneEmail: "+82 52 202 1234 / mskim@hhi.co.kr",
-    requestDate: "2026-11-15",
-    requestTime: "14:00",
-    status: "Schedule Confirmed",
-    createdDate: "2026-11-02",
-    note: "Urgent shipment inspection required.",
-    items: [
-      {
-        poNo: "4500098711",
-        itemNo: "00020",
-        qty: "100 pcs",
-        drawingRev: "HYU-99482 (Rev.2)",
-        reportNo: "HHI-2026-882",
-        rae: "APPROVED-04",
-        ncr: "-"
-      }
-    ]
-  }
-];
+import { supabase } from './supabaseClient';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('new');
-  const [requests, setRequests] = useState(INITIAL_REQUESTS);
+  const [requests, setRequests] = useState([]);
+  
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
+
   const [currentYear, setCurrentYear] = useState(2026);
   const [currentMonth, setCurrentMonth] = useState(11);
+
   const [companyName, setCompanyName] = useState('');
   const [location, setLocation] = useState('');
   const [contactPerson, setContactPerson] = useState('');
@@ -93,12 +46,23 @@ export default function App() {
   const [requestDate, setRequestDate] = useState('');
   const [requestTime, setRequestTime] = useState('10:00');
   const [note, setNote] = useState('');
+  
   const [items, setItems] = useState([
-    { poNo: '', itemNo: '', qty: '', drawingRev: '', reportNo: '', rae: '', ncr: '' }
+    {
+      poNo: '',
+      itemNo: '',
+      qty: '',
+      drawingRev: '',
+      reportNo: '',
+      rae: '',
+      ncr: ''
+    }
   ]);
+
   const [isNoticeWarning, setIsNoticeWarning] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [selectedDetailRequest, setSelectedDetailRequest] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
@@ -107,12 +71,48 @@ export default function App() {
   const generatedSubject = `[Inspection Request] ${primaryPo}-${primaryItem}_${companyName || 'COMPANY'}_${requestDate || 'YYYY-MM-DD'}`;
 
   useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const fetchRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inspection_requests')
+        .select('*')
+        .order('created_date', { ascending: false });
+      
+      if (error) {
+        console.error('데이터 조회 오류:', error.message);
+      } else if (data && data.length > 0) {
+        const formattedData = data.map(row => ({
+          id: row.id,
+          basicInfo: row.basic_info,
+          companyName: row.company_name,
+          location: row.location,
+          contactPerson: row.contact_person,
+          phoneEmail: row.phone_email,
+          requestDate: row.request_date,
+          requestTime: row.request_time,
+          status: row.status,
+          createdDate: row.created_date,
+          note: row.note,
+          items: row.items || []
+        }));
+        setRequests(formattedData);
+      }
+    } catch (err) {
+      console.error('서버 통신 실패:', err);
+    }
+  };
+
+  useEffect(() => {
     if (requestDate) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const targetDate = new Date(requestDate);
       const diffTime = targetDate - today;
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
       if (diffDays < 7) {
         setIsNoticeWarning(true);
       } else {
@@ -129,7 +129,15 @@ export default function App() {
   const handleAddItem = () => {
     setItems([
       ...items,
-      { poNo: items[items.length - 1]?.poNo || '', itemNo: '', qty: '', drawingRev: '', reportNo: '', rae: '', ncr: '' }
+      {
+        poNo: items[items.length - 1]?.poNo || '',
+        itemNo: '',
+        qty: '',
+        drawingRev: '',
+        reportNo: '',
+        rae: '',
+        ncr: ''
+      }
     ]);
   };
 
@@ -166,14 +174,42 @@ export default function App() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!requestDate || !companyName || !contactPerson) {
       showToast('필수 정보를 모두 입력해 주세요.', 'error');
       return;
     }
-    const newReq = {
-      id: `REQ-${Date.now().toString().slice(-6)}`,
+
+    const newReqId = `REQ-${Date.now().toString().slice(-6)}`;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const dbPayload = {
+      id: newReqId,
+      basic_info: generatedSubject,
+      company_name: companyName,
+      location: location,
+      contact_person: contactPerson,
+      phone_email: phoneEmail,
+      request_date: requestDate,
+      request_time: requestTime,
+      status: 'Pending Review',
+      created_date: todayStr,
+      note: note,
+      items: items
+    };
+
+    const { error } = await supabase.from('inspection_requests').insert([dbPayload]);
+
+    if (error) {
+      console.error('저장 실패:', error.message);
+      showToast('데이터 저장 중 오류가 발생했습니다.', 'error');
+      return;
+    }
+
+    const clientReq = {
+      id: newReqId,
       basicInfo: generatedSubject,
       companyName,
       location,
@@ -182,12 +218,14 @@ export default function App() {
       requestDate,
       requestTime,
       status: 'Pending Review',
-      createdDate: new Date().toISOString().split('T')[0],
+      createdDate: todayStr,
       note,
       items: [...items]
     };
-    setRequests([newReq, ...requests]);
+
+    setRequests([clientReq, ...requests]);
     showToast('검사 신청이 성공적으로 접수되었습니다!');
+    
     setCompanyName('');
     setLocation('');
     setContactPerson('');
@@ -216,7 +254,17 @@ export default function App() {
     showToast('일반 공급사 모드로 전환되었습니다.');
   };
 
-  const handleStatusChange = (reqId, newStatus) => {
+  const handleStatusChange = async (reqId, newStatus) => {
+    const { error } = await supabase
+      .from('inspection_requests')
+      .update({ status: newStatus })
+      .eq('id', reqId);
+
+    if (error) {
+      showToast('상태 변경 중 오류가 발생했습니다.', 'error');
+      return;
+    }
+
     setRequests(requests.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
     if (selectedDetailRequest && selectedDetailRequest.id === reqId) {
       setSelectedDetailRequest({ ...selectedDetailRequest, status: newStatus });
@@ -227,6 +275,7 @@ export default function App() {
   const handleExportCSV = () => {
     const headers = ["신청번호", "기본정보", "업체명", "QM 담당자", "검사요청일", "상태", "PO번호", "품번", "수량"];
     const rows = [];
+
     requests.forEach(req => {
       req.items.forEach(it => {
         rows.push([
@@ -242,8 +291,10 @@ export default function App() {
         ]);
       });
     });
+
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
       + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -258,9 +309,11 @@ export default function App() {
       req.basicInfo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.items.some(i => i.poNo.includes(searchTerm) || i.itemNo.includes(searchTerm));
+    
     const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
       {toastMessage && (
@@ -420,7 +473,7 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: WINGD CO., LTD."
+                      placeholder="예: ILSUNG MEASUREMENT CO., LTD."
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                       className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
@@ -435,7 +488,7 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: 8, Park Young-jun-gil, Busan, Korea"
+                      placeholder="예: 65-1, Jwadong-ro, Haeundae-gu, Busan, Korea"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                       className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
@@ -450,7 +503,7 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: Park, Gil Dong"
+                      placeholder="예: Han, Seung Jun"
                       value={contactPerson}
                       onChange={(e) => setContactPerson(e.target.value)}
                       className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
@@ -465,7 +518,7 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: +82 10 1234 5678 / wingd@wingd.co.kr"
+                      placeholder="예: +82 10 2624 7623 / contact@ismm.co.kr"
                       value={phoneEmail}
                       onChange={(e) => setPhoneEmail(e.target.value)}
                       className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
