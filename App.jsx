@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom/client';
 import { 
   ClipboardList, 
   Calendar as CalendarIcon, 
@@ -10,21 +9,16 @@ import {
   AlertTriangle, 
   Search, 
   Download, 
-  Printer, 
   Building2, 
   User, 
   PhoneCall, 
   Clock, 
   FileText, 
-  ChevronRight,
-  Info,
   Check,
   X,
   Filter,
   Lock,
-  Unlock,
-  ShieldCheck,
-  MapPin
+  Unlock
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
@@ -35,9 +29,6 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
-
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(11);
 
   const [companyName, setCompanyName] = useState('');
   const [location, setLocation] = useState('');
@@ -156,25 +147,6 @@ export default function App() {
     setItems(updated);
   };
 
-  const handlePrevMonth = () => {
-    if (currentMonth === 1) {
-      setCurrentYear(currentYear - 1);
-      setCurrentMonth(12);
-    } else {
-      setCurrentMonth(currentMonth - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (currentMonth === 12) {
-      setCurrentYear(currentYear + 1);
-      setCurrentMonth(1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
-    }
-  };
-
-  // ✅ 오류를 완벽히 해결한 단 하나의 통합 handleSubmit 함수
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -255,24 +227,6 @@ export default function App() {
     showToast('일반 공급사 모드로 전환되었습니다.');
   };
 
-  const handleStatusChange = async (reqId, newStatus) => {
-    const { error } = await supabase
-      .from('inspection_requests')
-      .update({ status: newStatus })
-      .eq('id', reqId);
-
-    if (error) {
-      showToast('상태 변경 중 오류가 발생했습니다.', 'error');
-      return;
-    }
-
-    setRequests(requests.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
-    if (selectedDetailRequest && selectedDetailRequest.id === reqId) {
-      setSelectedDetailRequest({ ...selectedDetailRequest, status: newStatus });
-    }
-    showToast(`신청 상태가 [${newStatus}] (으)로 변경되었습니다.`);
-  };
-
   const handleExportCSV = () => {
     const headers = ["신청번호", "기본정보", "업체명", "QM 담당자", "검사요청일", "상태", "PO번호", "품번", "수량"];
     const rows = [];
@@ -304,16 +258,6 @@ export default function App() {
     link.click();
     document.body.removeChild(link);
   };
-
-  const filteredRequests = requests.filter(req => {
-    const matchesSearch = 
-      req.basicInfo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.items.some(i => i.poNo.includes(searchTerm) || i.itemNo.includes(searchTerm));
-    
-    const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
@@ -398,25 +342,6 @@ export default function App() {
               신청 내역 및 관리 {isAdmin && `(${requests.length})`}
               {!isAdmin && <Lock className="w-3 h-3 text-amber-400 ml-0.5" />}
             </button>
-
-            <button
-              onClick={() => {
-                if (!isAdmin) {
-                  setShowAdminLoginModal(true);
-                } else {
-                  setActiveTab('calendar');
-                }
-              }}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
-                activeTab === 'calendar'
-                  ? 'border-blue-500 text-blue-400 bg-slate-800'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
-            >
-              <CalendarIcon className="w-4 h-4" />
-              검사 일정 현황 (Calendar View)
-              {!isAdmin && <Lock className="w-3 h-3 text-amber-400 ml-0.5" />}
-            </button>
           </div>
         </div>
       </header>
@@ -445,9 +370,6 @@ export default function App() {
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">모든 협력사가 접속하여 검사 요청 정보를 입력할 수 있는 공용 포탈입니다.</p>
                 </div>
-                <div className="text-xs text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-                  * 표시 항목은 필수 입력 사항입니다.
-                </div>
               </div>
 
               <div className="p-6 space-y-6">
@@ -455,14 +377,12 @@ export default function App() {
                   <label className="block text-xs font-semibold text-blue-900 uppercase tracking-wider mb-1">
                     No. 1 기본 정보 (Basic Info) - 자동 생성 메일 제목
                   </label>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="text" 
-                      readOnly 
-                      value={generatedSubject} 
-                      className="w-full bg-white border border-blue-300 rounded px-3 py-2 text-sm font-mono text-blue-950 font-medium shadow-inner focus:outline-none"
-                    />
-                  </div>
+                  <input 
+                    type="text" 
+                    readOnly 
+                    value={generatedSubject} 
+                    className="w-full bg-white border border-blue-300 rounded px-3 py-2 text-sm font-mono text-blue-950 font-medium shadow-inner focus:outline-none"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -489,7 +409,7 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: 8, Park Young-jun-gil, Busan, Korea"
+                      placeholder="예: Busan, Korea"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                       className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
@@ -519,7 +439,199 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: +82 10 1234 5678 / weingd@wingd.co.kr"
+                      placeholder="예: +82 10 1234 5678"
                       value={phoneEmail}
                       onChange={(e) => setPhoneEmail(e.target.value)}
-                      className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-
+                      className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                      No. 5 내용 상세 (Item Description Table)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      className="inline-flex items-center gap-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-medium border border-slate-300 transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      품목 추가 (Add Line)
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-amber-50/70 border-b border-slate-200 text-slate-700 uppercase font-semibold">
+                        <tr>
+                          <th className="p-3 border-r border-slate-200 min-w-[120px]">발주번호 (PO NO.)</th>
+                          <th className="p-3 border-r border-slate-200 min-w-[90px]">Item No.</th>
+                          <th className="p-3 border-r border-slate-200 min-w-[100px]">수량 (Qty)</th>
+                          <th className="p-3 border-r border-slate-200 min-w-[160px]">도면번호+개정번호</th>
+                          <th className="p-3 border-r border-slate-200 min-w-[150px]">리포트 번호</th>
+                          <th className="p-3 border-r border-slate-200 min-w-[110px]">RAE</th>
+                          <th className="p-3 border-r border-slate-200 min-w-[110px]">NCR</th>
+                          <th className="p-3 text-center min-w-[50px]">삭제</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {items.map((item, index) => (
+                          <tr key={index} className="hover:bg-slate-50/50">
+                            <td className="p-2 border-r border-slate-200">
+                              <input 
+                                type="text"
+                                required
+                                placeholder="4500012322"
+                                value={item.poNo}
+                                onChange={(e) => handleItemChange(index, 'poNo', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-2 py-1 text-xs outline-none"
+                              />
+                            </td>
+                            <td className="p-2 border-r border-slate-200">
+                              <input 
+                                type="text"
+                                required
+                                placeholder="00010"
+                                value={item.itemNo}
+                                onChange={(e) => handleItemChange(index, 'itemNo', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-2 py-1 text-xs outline-none"
+                              />
+                            </td>
+                            <td className="p-2 border-r border-slate-200">
+                              <input 
+                                type="text"
+                                required
+                                placeholder="25 pcs"
+                                value={item.qty}
+                                onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-2 py-1 text-xs outline-none"
+                              />
+                            </td>
+                            <td className="p-2 border-r border-slate-200">
+                              <input 
+                                type="text"
+                                placeholder="PTAA015861"
+                                value={item.drawingRev}
+                                onChange={(e) => handleItemChange(index, 'drawingRev', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-2 py-1 text-xs outline-none"
+                              />
+                            </td>
+                            <td className="p-2 border-r border-slate-200">
+                              <input 
+                                type="text"
+                                placeholder="IS261103-01"
+                                value={item.reportNo}
+                                onChange={(e) => handleItemChange(index, 'reportNo', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-2 py-1 text-xs outline-none"
+                              />
+                            </td>
+                            <td className="p-2 border-r border-slate-200">
+                              <input 
+                                type="text"
+                                placeholder="승인번호"
+                                value={item.rae}
+                                onChange={(e) => handleItemChange(index, 'rae', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-2 py-1 text-xs outline-none"
+                              />
+                            </td>
+                            <td className="p-2 border-r border-slate-200">
+                              <input 
+                                type="text"
+                                placeholder="NCR 번호"
+                                value={item.ncr}
+                                onChange={(e) => handleItemChange(index, 'ncr', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-2 py-1 text-xs outline-none"
+                              />
+                            </td>
+                            <td className="p-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(index)}
+                                className="text-slate-400 hover:text-red-600 p-1 rounded transition"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      No. 11 희망 검사 신청일 (Inspection Date) *
+                    </label>
+                    <input 
+                      type="date"
+                      required
+                      value={requestDate}
+                      onChange={(e) => setRequestDate(e.target.value)}
+                      className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm outline-none"
+                    />
+                    {isNoticeWarning && (
+                      <p className="text-xs text-amber-700 mt-1 font-medium">
+                        ⚠️ 일주일(7일) 미만의 긴급 신청입니다. 사전 협의가 필요합니다.
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      희망 검사 시간 (Inspection Time) *
+                    </label>
+                    <select
+                      value={requestTime}
+                      onChange={(e) => setRequestTime(e.target.value)}
+                      className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm outline-none"
+                    >
+                      <option value="09:00">09:00 AM</option>
+                      <option value="10:00">10:00 AM</option>
+                      <option value="11:00">11:00 AM</option>
+                      <option value="13:30">01:30 PM</option>
+                      <option value="14:00">02:00 PM</option>
+                      <option value="15:00">03:00 PM</option>
+                      <option value="16:00">04:00 PM</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                    <FileText className="w-3.5 h-3.5 text-slate-400" />
+                    No. 12 특이사항 (Note)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="특이사항이나 전달 요청사항을 적어주세요."
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    className="w-full border border-slate-300 rounded-md p-3 text-sm outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                <button
+                  type="submit"
+                  className="px-6 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow transition flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  검사 신청 제출 (Submit Request)
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {activeTab === 'history' && isAdmin && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+              <div className="p-6 border-b border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row gap-4 justify-between items-center">
+                <div className="relative w-full sm
