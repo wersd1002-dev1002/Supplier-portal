@@ -420,7 +420,7 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: ILSUNG MEASUREMENT CO., LTD."
+                      placeholder="예: WINGD CO., LTD."
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                       className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
@@ -435,7 +435,7 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: 65-1, Jwadong-ro, Haeundae-gu, Busan, Korea"
+                      placeholder="예: 8, Park Young-jun-gil, Busan, Korea"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                       className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
@@ -450,7 +450,7 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: Han, Seung Jun"
+                      placeholder="예: Park, Gil Dong"
                       value={contactPerson}
                       onChange={(e) => setContactPerson(e.target.value)}
                       className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
@@ -465,7 +465,7 @@ export default function App() {
                     <input 
                       type="text" 
                       required
-                      placeholder="예: +82 10 2624 7623 / contact@ismm.co.kr"
+                      placeholder="예: +82 10 1234 5678 / wingd@wingd.co.kr"
                       value={phoneEmail}
                       onChange={(e) => setPhoneEmail(e.target.value)}
                       className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
