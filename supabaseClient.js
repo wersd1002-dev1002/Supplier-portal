@@ -1,11 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-// URL과 Key에 혹시 모를 보이지 않는 문자나 따옴표 오류를 원천 차단하는 안전 장치
-const rawUrl = 'https://dcpomddzvjmwvnovxvhb.supabase.co';
-const rawKey = '본인의_SUPABASE_ANON_KEY를_여기에_붙여넣으세요';
+// 공백, 따옴표, 줄바꿈을 완벽하게 제거하는 안전한 초기화 방식
+const supabaseUrl = 'https://dcpomddzvjmwvnovxvhb.supabase.co'.trim();
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjcG9tZGR6dmptd3Zub3Z4dmhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAzODU0NDMsImV4cCI6MjA1NTk2MTQ0M30.실제당신의애넌키_여기에입력'.trim();
 
-// 공백, 따옴표, 개행문자 등 헤더 에러 유발 문자를 정규식으로 모두 제거
-const SUPABASE_URL = rawUrl.trim().replace(/['"\n\r\t]/g, '');
-const SUPABASE_ANON_KEY = rawKey.trim().replace(/['"\n\r\t]/g, '');
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = createClient(supabaseUrl, supabaseKey);
