@@ -211,7 +211,7 @@ export default function App() {
     setItems([{ poNo: '', itemNo: '', qty: '', drawingRev: '', reportNo: '', rae: '', ncr: '' }]);
   };
 
-  // 관리자 로그인 처리 (예시 비밀번호: 1234)
+  // 관리자 로그인 처리 (예시 비밀번호: 1002)
   const handleAdminLogin = (e) => {
     e.preventDefault();
     if (adminPassword === '1234') {
@@ -221,7 +221,7 @@ export default function App() {
       setActiveTab('history');
       showToast('관리자 모드로 전환되었습니다.');
     } else {
-      showToast('관리자 비밀번호가 틀렸습니다. (기본: 1234)', 'error');
+      showToast('관리자 비밀번호가 틀렸습니다. (기본: 1002)', 'error');
     }
   };
 
