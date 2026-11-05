@@ -7,17 +7,10 @@ import {
   Trash2, 
   CheckCircle2, 
   AlertTriangle, 
-  Search, 
-  Download, 
   Building2, 
-  User, 
-  PhoneCall, 
-  Clock, 
-  FileText, 
-  Check,
-  X,
-  Filter,
-  Lock,
+  Check, 
+  X, 
+  Lock, 
   Unlock,
   ChevronLeft,
   ChevronRight
@@ -201,15 +194,6 @@ export default function App() {
     showToast(`신청 상태가 [${newStatus}] (으)로 변경되었습니다.`);
   };
 
-  const filteredRequests = requests.filter(req => {
-    const matchesSearch = 
-      req.basicInfo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.items.some(i => i.poNo.includes(searchTerm) || i.itemNo.includes(searchTerm));
-    const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
   // 캘린더 생성 로직
   const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month - 1, 1).getDay();
@@ -334,7 +318,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* 품목 상세 테이블 추가 */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <label className="block text-xs font-semibold text-slate-700">품목 상세 내용</label>
@@ -438,4 +421,60 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'calendar' &&
+        {activeTab === 'calendar' && isAdmin && (
+          <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-slate-800">{currentYear}년 {currentMonth}월 검사 일정 현황</h3>
+              <div className="flex gap-2">
+                <button onClick={() => { if(currentMonth===1){setCurrentYear(currentYear-1); setCurrentMonth(12);}else{setCurrentMonth(currentMonth-1);} }} className="p-2 border rounded hover:bg-slate-100"><ChevronLeft className="w-4 h-4"/></button>
+                <button onClick={() => { if(currentMonth===12){setCurrentYear(currentYear+1); setCurrentMonth(1);}else{setCurrentMonth(currentMonth+1);} }} className="p-2 border rounded hover:bg-slate-100"><ChevronRight className="w-4 h-4"/></button>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-2 text-center font-semibold text-xs text-slate-600 bg-slate-100 p-2 rounded">
+              <div>일 (Sun)</div><div>월 (Mon)</div><div>화 (Tue)</div><div>수 (Wed)</div><div>목 (Thu)</div><div>금 (Fri)</div><div>토 (Sat)</div>
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {calendarDays.map((day, idx) => {
+                const dateStr = day ? day.toISOString().split('T')[0] : '';
+                const dayRequests = requests.filter(r => r.requestDate === dateStr);
+                return (
+                  <div key={idx} className={`min-h-[100px] border rounded-lg p-2 flex flex-col justify-between ${day ? 'bg-white' : 'bg-slate-50'}`}>
+                    <div className="text-xs font-bold text-slate-700">{day ? day.getDate() : ''}</div>
+                    <div className="space-y-1 overflow-y-auto max-h-[80px]">
+                      {dayRequests.map(req => (
+                        <div key={req.id} className="text-[10px] bg-blue-50 text-blue-700 p-1 rounded border border-blue-200 truncate">
+                          {req.requestTime} {req.companyName}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {showAdminLoginModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-base font-bold text-slate-900">관리자 인증</h3>
+              <button onClick={() => setShowAdminLoginModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={handleAdminLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">관리자 비밀번호</label>
+                <input type="password" placeholder="비밀번호 입력 (1002)" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm" autoFocus />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowAdminLoginModal(false)} className="px-4 py-2 text-xs bg-slate-100 rounded-md">취소</button>
+                <button type="submit" className="px-4 py-2 text-xs text-white bg-blue-600 rounded-md">로그인</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
