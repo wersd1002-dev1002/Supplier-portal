@@ -181,17 +181,21 @@ export default function App() {
     showToast('일반 공급사 모드로 전환되었습니다.');
   };
 
+  // 상태 변경 기능 수정 (DB 반영 보장)
   const handleStatusChange = async (reqId, newStatus) => {
-    const { error } = await supabase.from('inspection_requests').update({ status: newStatus }).eq('id', reqId);
-    if (error) {
+    try {
+      const { error } = await supabase.from('inspection_requests').update({ status: newStatus }).eq('id', reqId);
+      if (error) throw error;
+
+      setRequests(requests.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
+      showToast(`신청 상태가 변경되었습니다.`);
+      await fetchRequests();
+    } catch (err) {
+      console.error('상태 변경 실패:', err.message);
       showToast('상태 변경 중 오류가 발생했습니다.', 'error');
-      return;
     }
-    setRequests(requests.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
-    showToast(`신청 상태가 [${newStatus}] (으)로 변경되었습니다.`);
   };
 
-  // 신청 내역 삭제 기능 (Supabase DB 실제 삭제 후 즉시 재조회)
   const handleDeleteRequest = async (reqId) => {
     if (!window.confirm(`신청서 [${reqId}] 내역을 정말 삭제하시겠습니까?`)) return;
     
@@ -203,13 +207,14 @@ export default function App() {
       if (selectedDetailRequest?.id === reqId) {
         setSelectedDetailRequest(null);
       }
-      await fetchRequests(); // 데이터베이스에서 확실히 지워진 목록을 다시 불러옴
+      await fetchRequests();
     } catch (err) {
       console.error('삭제 실패:', err.message);
       showToast('삭제 중 오류가 발생했습니다: ' + err.message, 'error');
     }
   };
 
+  // 날짜 오차 없는 달력 계산 로직 (Local Date 기준 YYYY-MM-DD 생성)
   const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month - 1, 1).getDay();
 
@@ -221,8 +226,28 @@ export default function App() {
     calendarDays.push(null);
   }
   for (let d = 1; d <= daysInMonth; d++) {
-    calendarDays.push(new Date(currentYear, currentMonth - 1, d));
+    const monthStr = String(currentMonth).padStart(2, '0');
+    const dayStr = String(d).padStart(2, '0');
+    calendarDays.push({
+      date: new Date(currentYear, currentMonth - 1, d),
+      dateStr: `${currentYear}-${monthStr}-${dayStr}`
+    });
   }
+
+  // 상태별 캘린더 배지 색상 함수
+  const getStatusBadgeStyle = (status) => {
+    switch (status) {
+      case 'Approved':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      case 'Schedule Confirmed':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'Rejected':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'Pending Review':
+      default:
+        return 'bg-amber-100 text-amber-800 border-amber-300';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
@@ -434,7 +459,11 @@ export default function App() {
                         <td className="p-3">{req.contactPerson}</td>
                         <td className="p-3">{req.requestDate} {req.requestTime}</td>
                         <td className="p-3">
-                          <select value={req.status} onChange={(e) => handleStatusChange(req.id, e.target.value)} className="border rounded px-2 py-1 text-xs">
+                          <select 
+                            value={req.status} 
+                            onChange={(e) => handleStatusChange(req.id, e.target.value)} 
+                            className="border rounded px-2 py-1 text-xs font-medium"
+                          >
                             <option value="Pending Review">검토중 (Pending)</option>
                             <option value="Approved">승인 완료 (Approved)</option>
                             <option value="Schedule Confirmed">일정 확정 (Confirmed)</option>
@@ -468,15 +497,18 @@ export default function App() {
               <div>일 (Sun)</div><div>월 (Mon)</div><div>화 (Tue)</div><div>수 (Wed)</div><div>목 (Thu)</div><div>금 (Fri)</div><div>토 (Sat)</div>
             </div>
             <div className="grid grid-cols-7 gap-2">
-              {calendarDays.map((day, idx) => {
-                const dateStr = day ? day.toISOString().split('T')[0] : '';
-                const dayRequests = requests.filter(r => r.requestDate === dateStr);
+              {calendarDays.map((item, idx) => {
+                const dayRequests = item ? requests.filter(r => r.requestDate === item.dateStr) : [];
                 return (
-                  <div key={idx} className={`min-h-[100px] border rounded-lg p-2 flex flex-col justify-between ${day ? 'bg-white' : 'bg-slate-50'}`}>
-                    <div className="text-xs font-bold text-slate-700">{day ? day.getDate() : ''}</div>
+                  <div key={idx} className={`min-h-[110px] border rounded-lg p-2 flex flex-col justify-between ${item ? 'bg-white' : 'bg-slate-50'}`}>
+                    <div className="text-xs font-bold text-slate-700">{item ? item.date.getDate() : ''}</div>
                     <div className="space-y-1 overflow-y-auto max-h-[80px]">
                       {dayRequests.map(req => (
-                        <div key={req.id} onClick={() => setSelectedDetailRequest(req)} className="text-[10px] bg-blue-50 text-blue-700 p-1 rounded border border-blue-200 truncate cursor-pointer hover:bg-blue-100">
+                        <div 
+                          key={req.id} 
+                          onClick={() => setSelectedDetailRequest(req)} 
+                          className={`text-[10px] p-1.5 rounded border truncate cursor-pointer font-medium transition shadow-sm ${getStatusBadgeStyle(req.status)}`}
+                        >
                           {req.requestTime} {req.companyName}
                         </div>
                       ))}
