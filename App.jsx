@@ -191,7 +191,7 @@ export default function App() {
     showToast(`신청 상태가 [${newStatus}] (으)로 변경되었습니다.`);
   };
 
-  // 신청 내역 삭제 기능
+  // 신청 내역 삭제 기능 (Supabase DB 실제 삭제 후 즉시 재조회)
   const handleDeleteRequest = async (reqId) => {
     if (!window.confirm(`신청서 [${reqId}] 내역을 정말 삭제하시겠습니까?`)) return;
     
@@ -199,11 +199,11 @@ export default function App() {
       const { error } = await supabase.from('inspection_requests').delete().eq('id', reqId);
       if (error) throw error;
 
-      setRequests(requests.filter(r => r.id !== reqId));
       showToast('신청 내역이 성공적으로 삭제되었습니다.');
       if (selectedDetailRequest?.id === reqId) {
         setSelectedDetailRequest(null);
       }
+      await fetchRequests(); // 데이터베이스에서 확실히 지워진 목록을 다시 불러옴
     } catch (err) {
       console.error('삭제 실패:', err.message);
       showToast('삭제 중 오류가 발생했습니다: ' + err.message, 'error');
@@ -489,7 +489,6 @@ export default function App() {
         )}
       </main>
 
-      {/* 관리자 로그인 모달 (비밀번호 노출 제거) */}
       {showAdminLoginModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
@@ -511,7 +510,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 상세 보기 모달 */}
       {selectedDetailRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto space-y-4">
