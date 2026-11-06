@@ -64,7 +64,7 @@ export default function App() {
       
       if (error) {
         console.error('데이터 조회 오류:', error.message);
-      } else if (data && data.length > 0) {
+      } else if (data) {
         const formattedData = data.map(row => ({
           id: row.id,
           basicInfo: row.basic_info,
@@ -155,7 +155,9 @@ export default function App() {
       setRequestDate('');
       setNote('');
       setItems([{ poNo: '', itemNo: '', qty: '', drawingRev: '', reportNo: '', rae: '', ncr: '' }]);
-      fetchRequests();
+      
+      // 제출 직후 목록 즉시 갱신
+      await fetchRequests();
     } catch (err) {
       console.error('저장 실패:', err.message);
       showToast('데이터 저장 중 오류가 발생했습니다: ' + err.message, 'error');
@@ -188,9 +190,6 @@ export default function App() {
       return;
     }
     setRequests(requests.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
-    if (selectedDetailRequest && selectedDetailRequest.id === reqId) {
-      setSelectedDetailRequest({ ...selectedDetailRequest, status: newStatus });
-    }
     showToast(`신청 상태가 [${newStatus}] (으)로 변경되었습니다.`);
   };
 
