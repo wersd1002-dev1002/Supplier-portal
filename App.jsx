@@ -13,7 +13,8 @@ import {
   Lock, 
   Unlock,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Eye
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
@@ -42,6 +43,7 @@ export default function App() {
 
   const [isNoticeWarning, setIsNoticeWarning] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [selectedDetailRequest, setSelectedDetailRequest] = useState(null);
 
   const primaryPo = items[0]?.poNo || 'PO_NO';
   const primaryItem = items[0]?.itemNo || '00010';
@@ -53,37 +55,32 @@ export default function App() {
 
   const fetchRequests = async () => {
     try {
-      console.log('데이터 조회 시도중...');
       const { data, error } = await supabase
         .from('inspection_requests')
         .select('*')
         .order('created_date', { ascending: false });
       
       if (error) {
-        console.error('데이터 조회 Supabase 오류:', error.message);
-        showToast('데이터 조회 실패: ' + error.message, 'error');
-      } else {
-        console.log('조회된 데이터 성공:', data);
-        if (data) {
-          const formattedData = data.map(row => ({
-            id: row.id,
-            basicInfo: row.basic_info,
-            companyName: row.company_name,
-            location: row.location,
-            contactPerson: row.contact_person,
-            phoneEmail: row.phone_email,
-            requestDate: row.request_date,
-            requestTime: row.request_time,
-            status: row.status,
-            createdDate: row.created_date,
-            note: row.note,
-            items: row.items || []
-          }));
-          setRequests(formattedData);
-        }
+        console.error('데이터 조회 오류:', error.message);
+      } else if (data) {
+        const formattedData = data.map(row => ({
+          id: row.id,
+          basicInfo: row.basic_info,
+          companyName: row.company_name,
+          location: row.location,
+          contactPerson: row.contact_person,
+          phoneEmail: row.phone_email,
+          requestDate: row.request_date,
+          requestTime: row.request_time,
+          status: row.status,
+          createdDate: row.created_date,
+          note: row.note,
+          items: row.items || []
+        }));
+        setRequests(formattedData);
       }
     } catch (err) {
-      console.error('서버 통신 예외 발생:', err);
+      console.error('서버 통신 실패:', err);
     }
   };
 
@@ -145,7 +142,6 @@ export default function App() {
     };
 
     try {
-      console.log('저장 시도 데이터:', dbPayload);
       const { error } = await supabase.from('inspection_requests').insert([dbPayload]);
       if (error) throw error;
 
@@ -172,7 +168,7 @@ export default function App() {
       setShowAdminLoginModal(false);
       setAdminPassword('');
       setActiveTab('history');
-      fetchRequests(); // 관리자 로그인 시 최신 데이터 즉시 새로고침
+      fetchRequests();
       showToast('관리자 모드로 전환되었습니다.');
     } else {
       showToast('관리자 비밀번호가 틀렸습니다.', 'error');
@@ -193,6 +189,25 @@ export default function App() {
     }
     setRequests(requests.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
     showToast(`신청 상태가 [${newStatus}] (으)로 변경되었습니다.`);
+  };
+
+  // 신청 내역 삭제 기능
+  const handleDeleteRequest = async (reqId) => {
+    if (!window.confirm(`신청서 [${reqId}] 내역을 정말 삭제하시겠습니까?`)) return;
+    
+    try {
+      const { error } = await supabase.from('inspection_requests').delete().eq('id', reqId);
+      if (error) throw error;
+
+      setRequests(requests.filter(r => r.id !== reqId));
+      showToast('신청 내역이 성공적으로 삭제되었습니다.');
+      if (selectedDetailRequest?.id === reqId) {
+        setSelectedDetailRequest(null);
+      }
+    } catch (err) {
+      console.error('삭제 실패:', err.message);
+      showToast('삭제 중 오류가 발생했습니다: ' + err.message, 'error');
+    }
   };
 
   const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate();
@@ -399,17 +414,22 @@ export default function App() {
                     <th className="p-3">QM 담당자</th>
                     <th className="p-3">검사 요청일</th>
                     <th className="p-3">상태</th>
+                    <th className="p-3 text-center">관리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {requests.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="p-6 text-center text-slate-400">등록된 신청 내역이 없습니다.</td>
+                      <td colSpan="6" className="p-6 text-center text-slate-400">등록된 신청 내역이 없습니다.</td>
                     </tr>
                   ) : (
                     requests.map((req) => (
                       <tr key={req.id} className="hover:bg-slate-50">
-                        <td className="p-3 font-mono">{req.id}</td>
+                        <td className="p-3 font-mono">
+                          <button onClick={() => setSelectedDetailRequest(req)} className="text-blue-600 hover:underline font-semibold flex items-center gap-1">
+                            <Eye className="w-3.5 h-3.5" /> {req.id}
+                          </button>
+                        </td>
                         <td className="p-3 font-medium">{req.companyName}</td>
                         <td className="p-3">{req.contactPerson}</td>
                         <td className="p-3">{req.requestDate} {req.requestTime}</td>
@@ -420,6 +440,11 @@ export default function App() {
                             <option value="Schedule Confirmed">일정 확정 (Confirmed)</option>
                             <option value="Rejected">반려 (Rejected)</option>
                           </select>
+                        </td>
+                        <td className="p-3 text-center">
+                          <button onClick={() => handleDeleteRequest(req.id)} className="text-slate-400 hover:text-red-600 p-1" title="신청 내역 삭제">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -451,7 +476,7 @@ export default function App() {
                     <div className="text-xs font-bold text-slate-700">{day ? day.getDate() : ''}</div>
                     <div className="space-y-1 overflow-y-auto max-h-[80px]">
                       {dayRequests.map(req => (
-                        <div key={req.id} className="text-[10px] bg-blue-50 text-blue-700 p-1 rounded border border-blue-200 truncate">
+                        <div key={req.id} onClick={() => setSelectedDetailRequest(req)} className="text-[10px] bg-blue-50 text-blue-700 p-1 rounded border border-blue-200 truncate cursor-pointer hover:bg-blue-100">
                           {req.requestTime} {req.companyName}
                         </div>
                       ))}
@@ -464,6 +489,7 @@ export default function App() {
         )}
       </main>
 
+      {/* 관리자 로그인 모달 (비밀번호 노출 제거) */}
       {showAdminLoginModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
@@ -474,13 +500,75 @@ export default function App() {
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">관리자 비밀번호</label>
-                <input type="password" placeholder="비밀번호 입력 (1002)" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm" autoFocus />
+                <input type="password" placeholder="관리자 비밀번호를 입력하세요" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm" autoFocus />
               </div>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowAdminLoginModal(false)} className="px-4 py-2 text-xs bg-slate-100 rounded-md">취소</button>
                 <button type="submit" className="px-4 py-2 text-xs text-white bg-blue-600 rounded-md">로그인</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 상세 보기 모달 */}
+      {selectedDetailRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-blue-600" /> 검사 신청 상세 정보 ({selectedDetailRequest.id})
+              </h3>
+              <button onClick={() => setSelectedDetailRequest(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded-lg border">
+              <div><span className="font-semibold text-slate-500">업체명:</span> {selectedDetailRequest.companyName}</div>
+              <div><span className="font-semibold text-slate-500">검사 위치:</span> {selectedDetailRequest.location}</div>
+              <div><span className="font-semibold text-slate-500">QM 담당자:</span> {selectedDetailRequest.contactPerson}</div>
+              <div><span className="font-semibold text-slate-500">연락처/이메일:</span> {selectedDetailRequest.phoneEmail}</div>
+              <div><span className="font-semibold text-slate-500">희망 검사일시:</span> {selectedDetailRequest.requestDate} {selectedDetailRequest.requestTime}</div>
+              <div><span className="font-semibold text-slate-500">현재 상태:</span> <span className="font-bold text-blue-600">{selectedDetailRequest.status}</span></div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-700 uppercase">품목 상세 내용</h4>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 border-b text-slate-700">
+                    <tr>
+                      <th className="p-2.5">발주번호 (PO NO.)</th>
+                      <th className="p-2.5">Item No.</th>
+                      <th className="p-2.5">수량</th>
+                      <th className="p-2.5">도면번호</th>
+                      <th className="p-2.5">리포트 번호</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y bg-white">
+                    {selectedDetailRequest.items.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="p-2.5 font-mono">{item.poNo}</td>
+                        <td className="p-2.5 font-mono">{item.itemNo}</td>
+                        <td className="p-2.5">{item.qty}</td>
+                        <td className="p-2.5">{item.drawingRev || '-'}</td>
+                        <td className="p-2.5">{item.reportNo || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {selectedDetailRequest.note && (
+              <div className="text-xs bg-amber-50/60 border border-amber-200 p-3 rounded-lg">
+                <span className="font-bold text-amber-900 block mb-1">특이사항 (Note)</span>
+                <p className="text-slate-700 whitespace-pre-wrap">{selectedDetailRequest.note}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <button onClick={() => setSelectedDetailRequest(null)} className="px-4 py-2 text-xs bg-slate-800 text-white rounded-md">닫기</button>
+            </div>
           </div>
         </div>
       )}
