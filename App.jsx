@@ -42,10 +42,6 @@ export default function App() {
 
   const [isNoticeWarning, setIsNoticeWarning] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
-  const [selectedDetailRequest, setSelectedDetailRequest] = useState(null);
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
 
   const primaryPo = items[0]?.poNo || 'PO_NO';
   const primaryItem = items[0]?.itemNo || '00010';
@@ -156,7 +152,6 @@ export default function App() {
       setNote('');
       setItems([{ poNo: '', itemNo: '', qty: '', drawingRev: '', reportNo: '', rae: '', ncr: '' }]);
       
-      // 제출 직후 목록 즉시 갱신
       await fetchRequests();
     } catch (err) {
       console.error('저장 실패:', err.message);
@@ -193,7 +188,6 @@ export default function App() {
     showToast(`신청 상태가 [${newStatus}] (으)로 변경되었습니다.`);
   };
 
-  // 캘린더 생성 로직
   const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month - 1, 1).getDay();
 
