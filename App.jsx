@@ -53,32 +53,37 @@ export default function App() {
 
   const fetchRequests = async () => {
     try {
+      console.log('데이터 조회 시도중...');
       const { data, error } = await supabase
         .from('inspection_requests')
         .select('*')
         .order('created_date', { ascending: false });
       
       if (error) {
-        console.error('데이터 조회 오류:', error.message);
-      } else if (data) {
-        const formattedData = data.map(row => ({
-          id: row.id,
-          basicInfo: row.basic_info,
-          companyName: row.company_name,
-          location: row.location,
-          contactPerson: row.contact_person,
-          phoneEmail: row.phone_email,
-          requestDate: row.request_date,
-          requestTime: row.request_time,
-          status: row.status,
-          createdDate: row.created_date,
-          note: row.note,
-          items: row.items || []
-        }));
-        setRequests(formattedData);
+        console.error('데이터 조회 Supabase 오류:', error.message);
+        showToast('데이터 조회 실패: ' + error.message, 'error');
+      } else {
+        console.log('조회된 데이터 성공:', data);
+        if (data) {
+          const formattedData = data.map(row => ({
+            id: row.id,
+            basicInfo: row.basic_info,
+            companyName: row.company_name,
+            location: row.location,
+            contactPerson: row.contact_person,
+            phoneEmail: row.phone_email,
+            requestDate: row.request_date,
+            requestTime: row.request_time,
+            status: row.status,
+            createdDate: row.created_date,
+            note: row.note,
+            items: row.items || []
+          }));
+          setRequests(formattedData);
+        }
       }
     } catch (err) {
-      console.error('서버 통신 실패:', err);
+      console.error('서버 통신 예외 발생:', err);
     }
   };
 
@@ -140,6 +145,7 @@ export default function App() {
     };
 
     try {
+      console.log('저장 시도 데이터:', dbPayload);
       const { error } = await supabase.from('inspection_requests').insert([dbPayload]);
       if (error) throw error;
 
@@ -166,6 +172,7 @@ export default function App() {
       setShowAdminLoginModal(false);
       setAdminPassword('');
       setActiveTab('history');
+      fetchRequests(); // 관리자 로그인 시 최신 데이터 즉시 새로고침
       showToast('관리자 모드로 전환되었습니다.');
     } else {
       showToast('관리자 비밀번호가 틀렸습니다.', 'error');
@@ -259,7 +266,7 @@ export default function App() {
               <Plus className="w-4 h-4" /> 검사 신청 작성 (New Request)
             </button>
             <button
-              onClick={() => { if (!isAdmin) setShowAdminLoginModal(true); else setActiveTab('history'); }}
+              onClick={() => { if (!isAdmin) setShowAdminLoginModal(true); else { setActiveTab('history'); fetchRequests(); } }}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
                 activeTab === 'history' ? 'border-blue-500 text-blue-400 bg-slate-800' : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
@@ -268,7 +275,7 @@ export default function App() {
               {!isAdmin && <Lock className="w-3 h-3 text-amber-400 ml-0.5" />}
             </button>
             <button
-              onClick={() => { if (!isAdmin) setShowAdminLoginModal(true); else setActiveTab('calendar'); }}
+              onClick={() => { if (!isAdmin) setShowAdminLoginModal(true); else { setActiveTab('calendar'); fetchRequests(); } }}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
                 activeTab === 'calendar' ? 'border-blue-500 text-blue-400 bg-slate-800' : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
@@ -379,7 +386,10 @@ export default function App() {
 
         {activeTab === 'history' && isAdmin && (
           <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-4">
-            <h3 className="text-base font-bold text-slate-800">신청 내역 관리 목록 ({requests.length}건)</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-bold text-slate-800">신청 내역 관리 목록 ({requests.length}건)</h3>
+              <button onClick={fetchRequests} className="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded border">새로고침</button>
+            </div>
             <div className="border rounded-lg overflow-hidden">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-100 border-b">
@@ -392,22 +402,28 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {requests.map((req) => (
-                    <tr key={req.id} className="hover:bg-slate-50">
-                      <td className="p-3 font-mono">{req.id}</td>
-                      <td className="p-3 font-medium">{req.companyName}</td>
-                      <td className="p-3">{req.contactPerson}</td>
-                      <td className="p-3">{req.requestDate} {req.requestTime}</td>
-                      <td className="p-3">
-                        <select value={req.status} onChange={(e) => handleStatusChange(req.id, e.target.value)} className="border rounded px-2 py-1 text-xs">
-                          <option value="Pending Review">검토중 (Pending)</option>
-                          <option value="Approved">승인 완료 (Approved)</option>
-                          <option value="Schedule Confirmed">일정 확정 (Confirmed)</option>
-                          <option value="Rejected">반려 (Rejected)</option>
-                        </select>
-                      </td>
+                  {requests.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="p-6 text-center text-slate-400">등록된 신청 내역이 없습니다.</td>
                     </tr>
-                  ))}
+                  ) : (
+                    requests.map((req) => (
+                      <tr key={req.id} className="hover:bg-slate-50">
+                        <td className="p-3 font-mono">{req.id}</td>
+                        <td className="p-3 font-medium">{req.companyName}</td>
+                        <td className="p-3">{req.contactPerson}</td>
+                        <td className="p-3">{req.requestDate} {req.requestTime}</td>
+                        <td className="p-3">
+                          <select value={req.status} onChange={(e) => handleStatusChange(req.id, e.target.value)} className="border rounded px-2 py-1 text-xs">
+                            <option value="Pending Review">검토중 (Pending)</option>
+                            <option value="Approved">승인 완료 (Approved)</option>
+                            <option value="Schedule Confirmed">일정 확정 (Confirmed)</option>
+                            <option value="Rejected">반려 (Rejected)</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
