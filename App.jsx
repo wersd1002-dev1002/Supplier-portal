@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
+const ASSIGNEE_OPTIONS = ['Park', 'Lee(1)', 'Lee(2)', 'Hwang'];
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('new');
   const [requests, setRequests] = useState([]);
@@ -62,6 +64,7 @@ export default function App() {
       
       if (error) {
         console.error('데이터 조회 오류:', error.message);
+        showToast('데이터 조회 중 오류가 발생했습니다: ' + error.message, 'error');
       } else if (data) {
         const formattedData = data.map(row => ({
           id: row.id,
@@ -72,7 +75,8 @@ export default function App() {
           phoneEmail: row.phone_email,
           requestDate: row.request_date,
           requestTime: row.request_time,
-          status: row.status,
+          status: row.status || 'Pending Review',
+          assignedPic: row.assigned_pic || '',
           createdDate: row.created_date,
           note: row.note,
           items: row.items || []
@@ -136,6 +140,7 @@ export default function App() {
       request_date: requestDate,
       request_time: requestTime,
       status: 'Pending Review',
+      assigned_pic: '',
       created_date: todayStr,
       note: note,
       items: items
@@ -181,18 +186,53 @@ export default function App() {
     showToast('일반 공급사 모드로 전환되었습니다.');
   };
 
-  // 상태 변경 기능 수정 (DB 반영 보장)
   const handleStatusChange = async (reqId, newStatus) => {
     try {
-      const { error } = await supabase.from('inspection_requests').update({ status: newStatus }).eq('id', reqId);
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from('inspection_requests')
+        .update({ status: newStatus })
+        .eq('id', reqId)
+        .select();
 
-      setRequests(requests.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
-      showToast(`신청 상태가 변경되었습니다.`);
-      await fetchRequests();
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('수정된 행이 없습니다. Supabase RLS UPDATE 정책을 확인해주세요.');
+      }
+
+      setRequests(prev => prev.map(r => (r.id === reqId ? { ...r, status: newStatus } : r)));
+      if (selectedDetailRequest?.id === reqId) {
+        setSelectedDetailRequest(prev => ({ ...prev, status: newStatus }));
+      }
+      showToast('신청 상태가 저장되었습니다.');
     } catch (err) {
       console.error('상태 변경 실패:', err.message);
-      showToast('상태 변경 중 오류가 발생했습니다.', 'error');
+      showToast('상태 저장 실패: ' + err.message, 'error');
+      await fetchRequests();
+    }
+  };
+
+  const handleAssignedPicChange = async (reqId, newPic) => {
+    try {
+      const { data, error } = await supabase
+        .from('inspection_requests')
+        .update({ assigned_pic: newPic || null })
+        .eq('id', reqId)
+        .select();
+
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('수정된 행이 없습니다. Supabase RLS UPDATE 정책 및 assigned_pic 컬럼을 확인해주세요.');
+      }
+
+      setRequests(prev => prev.map(r => (r.id === reqId ? { ...r, assignedPic: newPic } : r)));
+      if (selectedDetailRequest?.id === reqId) {
+        setSelectedDetailRequest(prev => ({ ...prev, assignedPic: newPic }));
+      }
+      showToast(`담당자(${newPic || '미지정'})가 저장되었습니다.`);
+    } catch (err) {
+      console.error('담당자 저장 실패:', err.message);
+      showToast('담당자 저장 실패: ' + err.message, 'error');
+      await fetchRequests();
     }
   };
 
@@ -214,7 +254,6 @@ export default function App() {
     }
   };
 
-  // 날짜 오차 없는 달력 계산 로직 (Local Date 기준 YYYY-MM-DD 생성)
   const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month - 1, 1).getDay();
 
@@ -234,7 +273,6 @@ export default function App() {
     });
   }
 
-  // 상태별 캘린더 배지 색상 함수
   const getStatusBadgeStyle = (status) => {
     switch (status) {
       case 'Approved':
@@ -430,7 +468,7 @@ export default function App() {
               <h3 className="text-base font-bold text-slate-800">신청 내역 관리 목록 ({requests.length}건)</h3>
               <button onClick={fetchRequests} className="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded border">새로고침</button>
             </div>
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-100 border-b">
                   <tr>
@@ -438,6 +476,7 @@ export default function App() {
                     <th className="p-3">업체명</th>
                     <th className="p-3">QM 담당자</th>
                     <th className="p-3">검사 요청일</th>
+                    <th className="p-3">담당자 지정</th>
                     <th className="p-3">상태</th>
                     <th className="p-3 text-center">관리</th>
                   </tr>
@@ -445,7 +484,7 @@ export default function App() {
                 <tbody className="divide-y">
                   {requests.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="p-6 text-center text-slate-400">등록된 신청 내역이 없습니다.</td>
+                      <td colSpan="7" className="p-6 text-center text-slate-400">등록된 신청 내역이 없습니다.</td>
                     </tr>
                   ) : (
                     requests.map((req) => (
@@ -459,10 +498,22 @@ export default function App() {
                         <td className="p-3">{req.contactPerson}</td>
                         <td className="p-3">{req.requestDate} {req.requestTime}</td>
                         <td className="p-3">
+                          <select
+                            value={req.assignedPic || ''}
+                            onChange={(e) => handleAssignedPicChange(req.id, e.target.value)}
+                            className="border rounded px-2 py-1 text-xs font-medium bg-white"
+                          >
+                            <option value="">담당자 선택</option>
+                            {ASSIGNEE_OPTIONS.map((pic) => (
+                              <option key={pic} value={pic}>{pic}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="p-3">
                           <select 
                             value={req.status} 
                             onChange={(e) => handleStatusChange(req.id, e.target.value)} 
-                            className="border rounded px-2 py-1 text-xs font-medium"
+                            className="border rounded px-2 py-1 text-xs font-medium bg-white"
                           >
                             <option value="Pending Review">검토중 (Pending)</option>
                             <option value="Approved">승인 완료 (Approved)</option>
@@ -509,7 +560,7 @@ export default function App() {
                           onClick={() => setSelectedDetailRequest(req)} 
                           className={`text-[10px] p-1.5 rounded border truncate cursor-pointer font-medium transition shadow-sm ${getStatusBadgeStyle(req.status)}`}
                         >
-                          {req.requestTime} {req.companyName}
+                          {req.requestTime} {req.companyName}{req.assignedPic ? ` (${req.assignedPic})` : ''}
                         </div>
                       ))}
                     </div>
@@ -558,7 +609,8 @@ export default function App() {
               <div><span className="font-semibold text-slate-500">QM 담당자:</span> {selectedDetailRequest.contactPerson}</div>
               <div><span className="font-semibold text-slate-500">연락처/이메일:</span> {selectedDetailRequest.phoneEmail}</div>
               <div><span className="font-semibold text-slate-500">희망 검사일시:</span> {selectedDetailRequest.requestDate} {selectedDetailRequest.requestTime}</div>
-              <div><span className="font-semibold text-slate-500">현재 상태:</span> <span className="font-bold text-blue-600">{selectedDetailRequest.status}</span></div>
+              <div><span className="font-semibold text-slate-500">지정 담당자:</span> <span className="font-bold text-slate-800">{selectedDetailRequest.assignedPic || '미지정'}</span></div>
+              <div className="col-span-2"><span className="font-semibold text-slate-500">현재 상태:</span> <span className="font-bold text-blue-600">{selectedDetailRequest.status}</span></div>
             </div>
 
             <div className="space-y-2">
